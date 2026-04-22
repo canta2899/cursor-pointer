@@ -22,6 +22,9 @@ build:
 	@mkdir -p "$(RESOURCES)"
 	swiftc $(SWIFT_FILES) -o "$(MACOS)/$(BIN_NAME)" -O -target "$(TARGET)"
 	cp Sources/Resources/Info.plist "$(CONTENTS)/Info.plist"
+	cp Sources/Resources/AppIcon.icns "$(RESOURCES)/AppIcon.icns"
+	cp Sources/Resources/MenuBarIconTemplate.png "$(RESOURCES)/MenuBarIconTemplate.png"
+	cp Sources/Resources/MenuBarIconTemplate@2x.png "$(RESOURCES)/MenuBarIconTemplate@2x.png"
 
 clean:
 	rm -rf "$(APP_BUNDLE)"
