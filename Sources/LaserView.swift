@@ -1,92 +1,70 @@
 import AppKit
-import QuartzCore
 
 class LaserView: NSView {
     private var trail: [TrailPoint] = []
-    private var displayLink: CVDisplayLink?
+    private var updateTimer: Timer?
     private let calculator = TrailCalculator(duration: 0.3)
-    
+    private var lastFrameTime: Date = Date()
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        setupDisplayLink()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupDisplayLink()
     }
-    
-    private func setupDisplayLink() {
-        var link: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&link)
-        displayLink = link
-        
-        if let link = displayLink {
-            CVDisplayLinkSetOutputCallback(link, { (displayLink, inNow, inOutputTime, flagsIn, flagsOut, displayLinkContext) -> CVReturn in
-                let view = Unmanaged<LaserView>.fromOpaque(displayLinkContext!).takeUnretainedValue()
-                DispatchQueue.main.async {
-                    view.updateTrail()
-                }
-                return kCVReturnSuccess
-            }, Unmanaged.passUnretained(self).toOpaque())
-        }
-    }
-    
+
     func start() {
-        if let link = displayLink {
-            CVDisplayLinkStart(link)
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            self?.updateTrail()
         }
     }
-    
+
     func stop() {
-        if let link = displayLink {
-            CVDisplayLinkStop(link)
-        }
+        updateTimer?.invalidate()
+        updateTimer = nil
         trail.removeAll()
         setNeedsDisplay(self.bounds)
     }
-    
+
     private func updateTrail() {
+        lastFrameTime = Date()
         let mouseLocation = NSEvent.mouseLocation
-        // Convert screen coordinates to window/view coordinates
         if let window = self.window {
             let pointInWindow = window.convertPoint(fromScreen: mouseLocation)
-            trail.append(TrailPoint(location: pointInWindow, timestamp: Date()))
+            trail.append(TrailPoint(location: pointInWindow, timestamp: lastFrameTime))
         }
-        
-        trail = calculator.filterPoints(trail, relativeTo: Date())
-        
+        trail = calculator.filterPoints(trail, relativeTo: lastFrameTime)
         setNeedsDisplay(self.bounds)
     }
-    
+
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
-        
-        let now = Date()
-        
-        // Draw trail
+
+        // Reuse the timestamp from the last update so alpha calculations are consistent
+        let now = lastFrameTime
+
         for point in trail {
             let alpha = calculator.calculateAlpha(for: point, relativeTo: now)
             let radius = calculator.calculateRadius(for: alpha)
-            
+
             if alpha > 0 && radius > 0 {
                 context.setFillColor(NSColor.red.withAlphaComponent(alpha * 0.6).cgColor)
                 context.fillEllipse(in: CGRect(x: point.location.x - radius, y: point.location.y - radius, width: radius * 2, height: radius * 2))
             }
         }
-        
-        // Draw main dot
+
         if let current = trail.last {
             let dotRadius: CGFloat = 8.0
-            
+
             // Outer glow
             context.setFillColor(NSColor.red.withAlphaComponent(0.15).cgColor)
             context.fillEllipse(in: CGRect(x: current.location.x - dotRadius * 2, y: current.location.y - dotRadius * 2, width: dotRadius * 4, height: dotRadius * 4))
-            
+
             // Core
             context.setFillColor(NSColor.red.withAlphaComponent(0.9).cgColor)
             context.fillEllipse(in: CGRect(x: current.location.x - dotRadius, y: current.location.y - dotRadius, width: dotRadius * 2, height: dotRadius * 2))
-            
+
             // Highlight
             let highlightRadius = dotRadius * 0.4
             context.setFillColor(NSColor(red: 1.0, green: 0.6, blue: 0.6, alpha: 0.9).cgColor)

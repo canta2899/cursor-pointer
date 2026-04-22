@@ -1,6 +1,7 @@
 import AppKit
 
-// Private CGS headers
+// Private undocumented CGS API that allows cursor hiding while the app runs in the background
+// Will probably break at some point
 @_silgen_name("CGSMainConnectionID")
 func CGSMainConnectionID() -> Int32
 
@@ -10,44 +11,55 @@ func CGSSetConnectionProperty(_ cid: Int32, _ targetCid: Int32, _ key: CFString,
 class CursorManager {
     static let shared = CursorManager()
     private var isHidden = false
-    
+    private var usingNSCursorFallback = false
+
     private init() {}
-    
+
     func hideCursor() {
         guard !isHidden else { return }
         isHidden = true
-        
-        // 1. Enable background cursor control
+        usingNSCursorFallback = false
+
         let cid = CGSMainConnectionID()
-        let key = "SetsCursorInBackground" as CFString
-        CGSSetConnectionProperty(cid, cid, key, kCFBooleanTrue)
-        
-        // 2. Hide on all displays
-        var displayCount: UInt32 = 0
-        CGGetActiveDisplayList(0, nil, &displayCount)
-        
-        let displays = UnsafeMutablePointer<CGDirectDisplayID>.allocate(capacity: Int(displayCount))
-        CGGetActiveDisplayList(displayCount, displays, &displayCount)
-        
-        for i in 0..<Int(displayCount) {
-            CGDisplayHideCursor(displays[i])
+        let result = CGSSetConnectionProperty(cid, cid, "SetsCursorInBackground" as CFString, kCFBooleanTrue)
+
+        if result != 0 {
+            // if private api is unavailable fall back to NSCursor
+            NSCursor.hide()
+            usingNSCursorFallback = true
+            return
         }
-        displays.deallocate()
+
+        forEachDisplay { CGDisplayHideCursor($0) }
     }
-    
+
     func showCursor() {
         guard isHidden else { return }
         isHidden = false
-        
+
+        if usingNSCursorFallback {
+            NSCursor.unhide()
+            usingNSCursorFallback = false
+            return
+        }
+
+        let cid = CGSMainConnectionID()
+        // Show cursor first while background mode is still active, then revoke it
+        forEachDisplay { CGDisplayShowCursor($0) }
+        _ = CGSSetConnectionProperty(cid, cid, "SetsCursorInBackground" as CFString, kCFBooleanFalse)
+    }
+
+    private func forEachDisplay(_ action: (CGDirectDisplayID) -> Void) {
         var displayCount: UInt32 = 0
         CGGetActiveDisplayList(0, nil, &displayCount)
-        
+        guard displayCount > 0 else { return }
+
         let displays = UnsafeMutablePointer<CGDirectDisplayID>.allocate(capacity: Int(displayCount))
+        defer { displays.deallocate() }
         CGGetActiveDisplayList(displayCount, displays, &displayCount)
-        
+
         for i in 0..<Int(displayCount) {
-            CGDisplayShowCursor(displays[i])
+            action(displays[i])
         }
-        displays.deallocate()
     }
 }

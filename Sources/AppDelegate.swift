@@ -4,7 +4,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var listenerEnabled = true
     private var laserActive = false
-    private var overlayWindow: OverlayWindow?
+    private var overlayWindows: [OverlayWindow] = []
     
     private let doubleTapDetector = DoubleTapDetector()
     private var globalMonitor: Any?
@@ -26,7 +26,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
         if let button = statusItem.button {
-            // Using a system symbol since I accidentally deleted the custom icon
             button.image = NSImage(systemSymbolName: "cursorarrow.rays", accessibilityDescription: "Cursor Pointer")
         }
         
@@ -42,12 +41,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self = self, self.listenerEnabled else { return }
             
-            // 0x3C is the mask for Control key on macOS
-            // We check if the control flag is being released
-            if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] && event.keyCode == 59 { // 59 is Control
-                if self.doubleTapDetector.processTap() {
-                    self.toggleLaser()
-                }
+            // 59 = left Control, 62 = right Control
+            let isControlRelease = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] &&
+                (event.keyCode == 59 || event.keyCode == 62)
+            if isControlRelease && self.doubleTapDetector.processTap() {
+                self.toggleLaser()
             }
         }
     }
@@ -65,15 +63,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func toggleLaser() {
         laserActive.toggle()
-        
+
         if laserActive {
-            if overlayWindow == nil {
-                overlayWindow = OverlayWindow()
-            }
-            overlayWindow?.show()
+            overlayWindows = NSScreen.screens.map { OverlayWindow(screen: $0) }
+            overlayWindows.forEach { $0.show() }
             CursorManager.shared.hideCursor()
         } else {
-            overlayWindow?.hide()
+            overlayWindows.forEach { $0.hide() }
+            overlayWindows.removeAll()
             CursorManager.shared.showCursor()
         }
     }
