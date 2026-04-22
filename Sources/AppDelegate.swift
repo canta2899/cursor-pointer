@@ -6,7 +6,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var laserActive = false
     private var overlayWindow: OverlayWindow?
     
-    private var lastControlRelease: Date?
+    private let doubleTapDetector = DoubleTapDetector()
     private var globalMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -45,16 +45,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // 0x3C is the mask for Control key on macOS
             // We check if the control flag is being released
             if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] && event.keyCode == 59 { // 59 is Control
-                let now = Date()
-                if let lastRelease = self.lastControlRelease {
-                    let diff = now.timeIntervalSince(lastRelease)
-                    if diff < 0.4 {
-                        self.toggleLaser()
-                        self.lastControlRelease = nil
-                        return
-                    }
+                if self.doubleTapDetector.processTap() {
+                    self.toggleLaser()
                 }
-                self.lastControlRelease = now
             }
         }
     }

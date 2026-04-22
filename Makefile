@@ -11,7 +11,9 @@ SWIFT_FILES = Sources/main.swift \
               Sources/AppDelegate.swift \
               Sources/OverlayWindow.swift \
               Sources/LaserView.swift \
-              Sources/CursorManager.swift
+              Sources/CursorManager.swift \
+              Sources/TrailCalculator.swift \
+              Sources/DoubleTapDetector.swift
 
 all: build
 
@@ -19,7 +21,7 @@ build:
 	@mkdir -p "$(MACOS)"
 	@mkdir -p "$(RESOURCES)"
 	swiftc $(SWIFT_FILES) -o "$(MACOS)/$(BIN_NAME)" -O -target "$(TARGET)"
-	cp Resources/Info.plist "$(CONTENTS)/Info.plist"
+	cp Sources/Resources/Info.plist "$(CONTENTS)/Info.plist"
 
 clean:
 	rm -rf "$(APP_BUNDLE)"
@@ -27,4 +29,7 @@ clean:
 run: build
 	open "$(APP_BUNDLE)"
 
-.PHONY: all build clean run
+test:
+	swift test
+
+.PHONY: all build clean run test

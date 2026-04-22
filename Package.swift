@@ -13,9 +13,11 @@ let package = Package(
         .executableTarget(
             name: "CursorPointer",
             path: "Sources",
-            resources: [
-                .process("Resources")
-            ]
+            exclude: ["Resources/Info.plist"]
+        ),
+        .testTarget(
+            name: "CursorPointerTests",
+            dependencies: ["CursorPointer"]
         )
     ]
 )

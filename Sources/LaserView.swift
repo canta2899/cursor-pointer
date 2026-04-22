@@ -2,14 +2,9 @@ import AppKit
 import QuartzCore
 
 class LaserView: NSView {
-    private struct Point {
-        let location: CGPoint
-        let timestamp: Date
-    }
-    
-    private var trail: [Point] = []
+    private var trail: [TrailPoint] = []
     private var displayLink: CVDisplayLink?
-    private let trailDuration: TimeInterval = 0.3
+    private let calculator = TrailCalculator(duration: 0.3)
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -56,11 +51,10 @@ class LaserView: NSView {
         // Convert screen coordinates to window/view coordinates
         if let window = self.window {
             let pointInWindow = window.convertPoint(fromScreen: mouseLocation)
-            trail.append(Point(location: pointInWindow, timestamp: Date()))
+            trail.append(TrailPoint(location: pointInWindow, timestamp: Date()))
         }
         
-        let now = Date()
-        trail = trail.filter { now.timeIntervalSince($0.timestamp) < trailDuration }
+        trail = calculator.filterPoints(trail, relativeTo: Date())
         
         setNeedsDisplay(self.bounds)
     }
@@ -72,9 +66,8 @@ class LaserView: NSView {
         
         // Draw trail
         for point in trail {
-            let age = now.timeIntervalSince(point.timestamp)
-            let alpha = CGFloat(1.0 - (age / trailDuration))
-            let radius = CGFloat(6.0 * alpha)
+            let alpha = calculator.calculateAlpha(for: point, relativeTo: now)
+            let radius = calculator.calculateRadius(for: alpha)
             
             if alpha > 0 && radius > 0 {
                 context.setFillColor(NSColor.red.withAlphaComponent(alpha * 0.6).cgColor)
