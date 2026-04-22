@@ -17,6 +17,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        // Ensure cursor is restored on exit
+        CursorManager.shared.showCursor()
+    }
+
     private func setupTray() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
