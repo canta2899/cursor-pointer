@@ -3,7 +3,7 @@
 # dependencies = ["Pillow"]
 # ///
 """
-This is a completely vibe-coded that generates the app icon and the menu-bar icon
+This is a completely vibe-coded script that generates the app icon and the menu-bar icon
 """
 
 import os

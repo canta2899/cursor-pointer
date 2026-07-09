@@ -25,6 +25,7 @@ build:
 	cp Sources/Resources/AppIcon.icns "$(RESOURCES)/AppIcon.icns"
 	cp Sources/Resources/MenuBarIconTemplate.png "$(RESOURCES)/MenuBarIconTemplate.png"
 	cp Sources/Resources/MenuBarIconTemplate@2x.png "$(RESOURCES)/MenuBarIconTemplate@2x.png"
+	@echo "CursorPointer.app has been built in the out/ directory"
 
 clean:
 	rm -rf "$(APP_BUNDLE)"
